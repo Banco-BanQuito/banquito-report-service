@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: report-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/routingdb}
+
+server:
+  port: ${SERVER_PORT:8088}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+banquito:
+  reports:
+    storage-path: ${REPORT_STORAGE_PATH:./reports}
+  notification:
+    grpc-host: ${NOTIFICATION_GRPC_HOST:localhost}
+    grpc-port: ${NOTIFICATION_GRPC_PORT:9099}
+    grpc-enabled: ${NOTIFICATION_GRPC_ENABLED:true}
