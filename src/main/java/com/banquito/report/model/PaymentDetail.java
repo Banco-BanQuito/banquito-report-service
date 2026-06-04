@@ -2,6 +2,8 @@ package com.banquito.report.model;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -18,14 +20,26 @@ public class PaymentDetail {
     @Field("batch_id")
     private String batchId;
 
+    @Field("batchId")
+    private String batchIdCamel;
+
     @Field("line_number")
     private Integer lineNumber;
+
+    @Field("lineNumber")
+    private Integer lineNumberCamel;
 
     @Field("transaction_id")
     private String transactionId;
 
+    @Field("transactionUuid")
+    private String transactionUuid;
+
     @Field("beneficiary_name")
     private String beneficiaryName;
+
+    @Field("beneficiaryName")
+    private String beneficiaryNameCamel;
 
     @Field("beneficiary_identification")
     private String beneficiaryIdentification;
@@ -36,8 +50,14 @@ public class PaymentDetail {
     @Field("beneficiary_email")
     private String beneficiaryEmail;
 
+    @Field("beneficiaryEmail")
+    private String beneficiaryEmailCamel;
+
     @Field("destination_account")
     private String destinationAccount;
+
+    @Field("accountDestination")
+    private String accountDestination;
 
     private BigDecimal amount;
     private String status;
@@ -48,8 +68,14 @@ public class PaymentDetail {
     @Field("error_description")
     private String errorDescription;
 
+    @Field("errorMessage")
+    private String errorMessage;
+
     @Field("processed_at")
     private Instant processedAt;
+
+    @Field("processedAt")
+    private LocalDateTime processedAtCamel;
 
     @Field("company_name")
     private String companyName;
@@ -61,19 +87,22 @@ public class PaymentDetail {
     }
 
     public String getEffectiveBatchId() {
-        return paymentBatchId != null ? paymentBatchId : batchId;
+        if (paymentBatchId != null) {
+            return paymentBatchId;
+        }
+        return batchId != null ? batchId : batchIdCamel;
     }
 
     public Integer getLineNumber() {
-        return lineNumber;
+        return lineNumber != null ? lineNumber : lineNumberCamel;
     }
 
     public String getTransactionId() {
-        return transactionId;
+        return transactionId != null ? transactionId : transactionUuid;
     }
 
     public String getBeneficiaryName() {
-        return beneficiaryName;
+        return beneficiaryName != null ? beneficiaryName : beneficiaryNameCamel;
     }
 
     public String getBeneficiaryIdentification() {
@@ -81,11 +110,11 @@ public class PaymentDetail {
     }
 
     public String getBeneficiaryEmail() {
-        return beneficiaryEmail;
+        return beneficiaryEmail != null ? beneficiaryEmail : beneficiaryEmailCamel;
     }
 
     public String getDestinationAccount() {
-        return destinationAccount;
+        return destinationAccount != null ? destinationAccount : accountDestination;
     }
 
     public BigDecimal getAmount() {
@@ -101,11 +130,14 @@ public class PaymentDetail {
     }
 
     public String getErrorDescription() {
-        return errorDescription;
+        return errorDescription != null ? errorDescription : errorMessage;
     }
 
     public Instant getProcessedAt() {
-        return processedAt;
+        if (processedAt != null) {
+            return processedAt;
+        }
+        return processedAtCamel == null ? null : processedAtCamel.toInstant(ZoneOffset.UTC);
     }
 
     public String getCompanyName() {

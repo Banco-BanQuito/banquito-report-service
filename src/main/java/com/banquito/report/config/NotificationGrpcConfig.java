@@ -1,6 +1,6 @@
 package com.banquito.report.config;
 
-import com.banquito.report.grpc.NotificationServiceGrpc;
+import com.banquito.payswitch.notification.NotificationServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import jakarta.annotation.PreDestroy;

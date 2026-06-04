@@ -157,7 +157,7 @@ Esto se hizo asi para tolerar pequenas diferencias de nombres mientras Paul term
 `report-service` llama por gRPC a:
 
 ```text
-notification-service:9099
+notification-service:9092
 ```
 
 Contrato compatible:
@@ -170,7 +170,7 @@ Variables:
 
 ```env
 NOTIFICATION_GRPC_HOST=notification-service
-NOTIFICATION_GRPC_PORT=9099
+NOTIFICATION_GRPC_PORT=9092
 NOTIFICATION_GRPC_ENABLED=true
 ```
 
@@ -188,7 +188,7 @@ NOTIFICATION_GRPC_ENABLED=false
 | `MONGODB_URI` | `mongodb://localhost:27017/routingdb` | `mongodb://mongo:27017/routingdb` | Conexion a MongoDB |
 | `REPORT_STORAGE_PATH` | `./reports` | `/app/reports` o volumen | Carpeta donde se guardan CSV generados |
 | `NOTIFICATION_GRPC_HOST` | `localhost` | `notification-service` | Host gRPC de notificaciones |
-| `NOTIFICATION_GRPC_PORT` | `9099` | `9099` | Puerto gRPC de notificaciones |
+| `NOTIFICATION_GRPC_PORT` | `9092` | `9092` | Puerto gRPC de notificaciones compatible con routing-service |
 | `NOTIFICATION_GRPC_ENABLED` | `true` o `false` | `true` | Activa llamada gRPC |
 
 ## Como levantar localmente
@@ -198,7 +198,7 @@ Requisitos:
 - Java 21
 - Maven 3.9+
 - MongoDB con `routingdb`
-- Opcional: `notification-service` levantado en `9099`
+- Opcional: `notification-service` levantado en `9092`
 
 Levantar sin notificaciones:
 
@@ -210,7 +210,7 @@ Levantar con notificaciones:
 
 ```bash
 $env:NOTIFICATION_GRPC_HOST="localhost"
-$env:NOTIFICATION_GRPC_PORT="9099"
+$env:NOTIFICATION_GRPC_PORT="9092"
 $env:NOTIFICATION_GRPC_ENABLED="true"
 mvn spring-boot:run
 ```
@@ -236,7 +236,7 @@ Ejecutar apuntando a Mongo local y notification local:
 docker run --rm -p 8088:8088 ^
   -e MONGODB_URI=mongodb://host.docker.internal:27017/routingdb ^
   -e NOTIFICATION_GRPC_HOST=host.docker.internal ^
-  -e NOTIFICATION_GRPC_PORT=9099 ^
+  -e NOTIFICATION_GRPC_PORT=9092 ^
   -e NOTIFICATION_GRPC_ENABLED=true ^
   banquito-report-service
 ```
@@ -247,7 +247,7 @@ En `banquito-infra`, este servicio debe usar:
 MONGODB_URI=mongodb://mongo:27017/routingdb
 REPORT_STORAGE_PATH=/app/reports
 NOTIFICATION_GRPC_HOST=notification-service
-NOTIFICATION_GRPC_PORT=9099
+NOTIFICATION_GRPC_PORT=9092
 NOTIFICATION_GRPC_ENABLED=true
 ```
 

@@ -7,6 +7,6 @@ import org.springframework.data.mongodb.repository.Query;
 
 public interface PaymentDetailRepository extends MongoRepository<PaymentDetail, String> {
 
-    @Query("{ '$or': [ { 'payment_batch_id': ?0 }, { 'batch_id': ?0 } ] }")
+    @Query("{ '$or': [ { 'payment_batch_id': ?0 }, { 'batch_id': ?0 }, { 'batchId': ?0 } ] }")
     List<PaymentDetail> findByAnyBatchId(String batchId);
 }

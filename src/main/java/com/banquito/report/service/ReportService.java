@@ -1,6 +1,6 @@
 package com.banquito.report.service;
 
-import com.banquito.report.grpc.SendNotificationResponse;
+import com.banquito.payswitch.notification.NotificationResponse;
 import com.banquito.report.model.BeneficiaryNotification;
 import com.banquito.report.model.DetailStatusSnapshot;
 import com.banquito.report.model.PaymentBatch;
@@ -164,7 +164,7 @@ public class ReportService {
                         return;
                     }
 
-                    SendNotificationResponse response = notificationClient.sendPaymentNotification(detail);
+                    NotificationResponse response = notificationClient.sendPaymentNotification(detail);
                     Instant now = Instant.now();
                     boolean sent = "ENVIADO".equals(response.getStatus()) || "SIMULADO".equals(response.getStatus());
                     notificationRepository.save(new BeneficiaryNotification(
@@ -177,7 +177,7 @@ public class ReportService {
                             sent ? null : now.plusSeconds(300),
                             now,
                             sent ? now : null,
-                            response.getErrorMessage().isBlank() ? null : response.getErrorMessage()
+                            null
                     ));
                 });
     }

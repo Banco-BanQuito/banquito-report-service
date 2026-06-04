@@ -19,5 +19,5 @@ banquito:
     storage-path: ${REPORT_STORAGE_PATH:./reports}
   notification:
     grpc-host: ${NOTIFICATION_GRPC_HOST:localhost}
-    grpc-port: ${NOTIFICATION_GRPC_PORT:9099}
+    grpc-port: ${NOTIFICATION_GRPC_PORT:9092}
     grpc-enabled: ${NOTIFICATION_GRPC_ENABLED:true}

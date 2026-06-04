@@ -1,8 +1,8 @@
 package com.banquito.report.service;
 
-import com.banquito.report.grpc.NotificationServiceGrpc;
-import com.banquito.report.grpc.SendNotificationRequest;
-import com.banquito.report.grpc.SendNotificationResponse;
+import com.banquito.payswitch.notification.NotificationRequest;
+import com.banquito.payswitch.notification.NotificationResponse;
+import com.banquito.payswitch.notification.NotificationServiceGrpc;
 import com.banquito.report.model.PaymentDetail;
 import io.grpc.StatusRuntimeException;
 import java.util.Map;
@@ -21,18 +21,17 @@ public class NotificationClient {
         this.enabled = enabled;
     }
 
-    public SendNotificationResponse sendPaymentNotification(PaymentDetail detail) {
+    public NotificationResponse sendPaymentNotification(PaymentDetail detail) {
         if (!enabled || detail.getBeneficiaryEmail() == null || detail.getBeneficiaryEmail().isBlank()) {
-            return SendNotificationResponse.newBuilder()
+            return NotificationResponse.newBuilder()
                     .setNotificationId("")
                     .setStatus("OMITIDO")
-                    .setErrorMessage("gRPC deshabilitado o email vacio")
                     .build();
         }
 
         try {
-            return stub.sendNotification(SendNotificationRequest.newBuilder()
-                    .setPaymentDetailId(detail.getId())
+            return stub.sendNotification(NotificationRequest.newBuilder()
+                    .setPaymentDetailId(detail.getId() == null ? 0 : Math.abs(detail.getId().hashCode()))
                     .setEmailTo(detail.getBeneficiaryEmail())
                     .setSubject("Pago recibido - BanQuito")
                     .setBodyTemplate("BENEFICIARY_PAYMENT")
@@ -44,10 +43,9 @@ public class NotificationClient {
                     ))
                     .build());
         } catch (StatusRuntimeException ex) {
-            return SendNotificationResponse.newBuilder()
+            return NotificationResponse.newBuilder()
                     .setNotificationId("")
                     .setStatus("ERROR")
-                    .setErrorMessage(ex.getStatus().getDescription() == null ? ex.getMessage() : ex.getStatus().getDescription())
                     .build();
         }
     }

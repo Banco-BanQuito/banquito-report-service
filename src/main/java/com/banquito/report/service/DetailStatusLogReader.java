@@ -35,7 +35,8 @@ public class DetailStatusLogReader {
 
         Query query = new Query(new Criteria().orOperator(
                 Criteria.where("payment_batch_id").is(batchId),
-                Criteria.where("batch_id").is(batchId)
+                Criteria.where("batch_id").is(batchId),
+                Criteria.where("batchId").is(batchId)
         ));
         List<Document> logs = mongoTemplate.find(query, Document.class, collection);
         logs.stream()
@@ -50,8 +51,8 @@ public class DetailStatusLogReader {
                 firstString(document, "payment_detail_id", "paymentDetailId", "detail_id", "detailId"),
                 firstString(document, "status", "new_status", "current_status"),
                 firstString(document, "error_code", "errorCode", "code"),
-                firstString(document, "error_description", "errorDescription", "message", "reason"),
-                firstInstant(document, "processed_at", "created_at", "changed_at", "timestamp")
+                firstString(document, "error_description", "errorDescription", "errorMessage", "message", "reason"),
+                firstInstant(document, "processed_at", "processedAt", "created_at", "createdAt", "changed_at", "changedAt", "timestamp")
         );
     }
 
