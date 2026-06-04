@@ -26,6 +26,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -40,6 +43,7 @@ public class ReportService {
     private final BeneficiaryNotificationRepository notificationRepository;
     private final NotificationClient notificationClient;
     private final DetailStatusLogReader detailStatusLogReader;
+    private final MongoTemplate mongoTemplate;
     private final Path storagePath;
 
     public ReportService(PaymentDetailRepository paymentDetailRepository,
@@ -48,6 +52,7 @@ public class ReportService {
                          BeneficiaryNotificationRepository notificationRepository,
                          NotificationClient notificationClient,
                          DetailStatusLogReader detailStatusLogReader,
+                         MongoTemplate mongoTemplate,
                          @Value("${banquito.reports.storage-path}") String storagePath) {
         this.paymentDetailRepository = paymentDetailRepository;
         this.paymentBatchRepository = paymentBatchRepository;
@@ -55,6 +60,7 @@ public class ReportService {
         this.notificationRepository = notificationRepository;
         this.notificationClient = notificationClient;
         this.detailStatusLogReader = detailStatusLogReader;
+        this.mongoTemplate = mongoTemplate;
         this.storagePath = Path.of(storagePath);
     }
 
@@ -89,7 +95,7 @@ public class ReportService {
 
     public ReceiptResponse generateReceipt(String batchId) {
         List<PaymentDetail> details = detailsForBatch(batchId);
-        Optional<PaymentBatch> batch = paymentBatchRepository.findByAnyBatchId(batchId);
+        Optional<PaymentBatch> batch = batchForId(batchId);
         batch.ifPresent(this::assertCompleted);
         long successful = details.stream().filter(this::isSuccessful).count();
         long rejected = details.size() - successful;
@@ -135,11 +141,28 @@ public class ReportService {
     }
 
     private List<PaymentDetail> detailsForBatch(String batchId) {
-        List<PaymentDetail> details = paymentDetailRepository.findByAnyBatchId(batchId);
+        List<PaymentDetail> details = mongoTemplate.find(batchQuery(batchId), org.bson.Document.class, "payment_detail")
+                .stream()
+                .map(PaymentDetail::fromDocument)
+                .toList();
         if (details.isEmpty()) {
             throw new ReportNotFoundException("No existen detalles procesados para el lote " + batchId);
         }
         return details;
+    }
+
+    private Optional<PaymentBatch> batchForId(String batchId) {
+        org.bson.Document document = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "payment_batch");
+        return Optional.ofNullable(document).map(PaymentBatch::fromDocument);
+    }
+
+    private Query batchQuery(String batchId) {
+        return new Query(new Criteria().orOperator(
+                Criteria.where("_id").is(batchId),
+                Criteria.where("payment_batch_id").is(batchId),
+                Criteria.where("batch_id").is(batchId),
+                Criteria.where("batchId").is(batchId)
+        ));
     }
 
     private void persistReport(String batchId, String type, String reportUuid, Path file, String content) {
@@ -159,6 +182,9 @@ public class ReportService {
                 .forEach(detail -> {
                     boolean alreadySent = notificationRepository
                             .findFirstByPaymentDetailIdAndStatus(detail.getId(), "ENVIADO")
+                            .isPresent()
+                            || notificationRepository
+                            .findFirstByPaymentDetailIdAndStatus(routingNotificationId(detail), "ENVIADO")
                             .isPresent();
                     if (alreadySent) {
                         return;
@@ -180,6 +206,10 @@ public class ReportService {
                             null
                     ));
                 });
+    }
+
+    private String routingNotificationId(PaymentDetail detail) {
+        return detail.getId() == null ? "" : String.valueOf(Math.abs(detail.getId().hashCode()));
     }
 
     private boolean isSuccessful(PaymentDetail detail) {

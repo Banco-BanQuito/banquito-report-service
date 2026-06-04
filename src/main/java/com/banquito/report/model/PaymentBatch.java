@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Date;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -117,5 +118,67 @@ public class PaymentBatch {
             return completedAtCamel.toInstant(ZoneOffset.UTC);
         }
         return updatedAt == null ? null : updatedAt.toInstant(ZoneOffset.UTC);
+    }
+
+    public static PaymentBatch fromDocument(org.bson.Document document) {
+        PaymentBatch batch = new PaymentBatch();
+        Object objectId = document.get("_id");
+        batch.id = objectId == null ? null : objectId.toString();
+        batch.batchId = document.getString("batch_id");
+        batch.paymentBatchId = document.getString("payment_batch_id");
+        batch.batchIdCamel = document.getString("batchId");
+        batch.status = document.getString("status");
+        batch.clientRuc = document.getString("client_ruc");
+        batch.companyName = document.getString("company_name");
+        batch.totalRecords = longValue(document.get("total_records"));
+        batch.declaredTotalRecords = longValue(document.get("declaredTotalRecords"));
+        batch.successful = longValue(document.get("successful"));
+        batch.rejected = longValue(document.get("rejected"));
+        batch.successfulRecords = longValue(document.get("successfulRecords"));
+        batch.rejectedRecords = longValue(document.get("rejectedRecords"));
+        batch.successfulAmount = bigDecimalValue(document.get("successful_amount"));
+        batch.successfulAmountCamel = bigDecimalValue(document.get("successfulAmount"));
+        batch.processedAt = instantValue(document.get("processed_at"));
+        batch.completedAt = instantValue(document.get("completed_at"));
+        batch.completedAtCamel = localDateTimeValue(document.get("completedAt"));
+        batch.updatedAt = localDateTimeValue(document.get("updatedAt"));
+        return batch;
+    }
+
+    private static Long longValue(Object value) {
+        return value instanceof Number number ? number.longValue() : null;
+    }
+
+    private static BigDecimal bigDecimalValue(Object value) {
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        return value instanceof Number number ? BigDecimal.valueOf(number.doubleValue()) : null;
+    }
+
+    private static Instant instantValue(Object value) {
+        if (value instanceof Instant instant) {
+            return instant;
+        }
+        if (value instanceof Date date) {
+            return date.toInstant();
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime.toInstant(ZoneOffset.UTC);
+        }
+        return null;
+    }
+
+    private static LocalDateTime localDateTimeValue(Object value) {
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (value instanceof Date date) {
+            return LocalDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC);
+        }
+        if (value instanceof Instant instant) {
+            return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+        }
+        return null;
     }
 }

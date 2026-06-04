@@ -4,11 +4,14 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Date;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "payment_detail")
+@TypeAlias("ec.edu.espe.banquito.routingservice.model.PaymentDetail")
 public class PaymentDetail {
 
     @Id
@@ -146,5 +149,73 @@ public class PaymentDetail {
 
     public String getConcept() {
         return concept;
+    }
+
+    public static PaymentDetail fromDocument(org.bson.Document document) {
+        PaymentDetail detail = new PaymentDetail();
+        Object objectId = document.get("_id");
+        detail.id = objectId == null ? null : objectId.toString();
+        detail.paymentBatchId = document.getString("payment_batch_id");
+        detail.batchId = document.getString("batch_id");
+        detail.batchIdCamel = document.getString("batchId");
+        detail.lineNumber = integerValue(document.get("line_number"));
+        detail.lineNumberCamel = integerValue(document.get("lineNumber"));
+        detail.transactionId = document.getString("transaction_id");
+        detail.transactionUuid = document.getString("transactionUuid");
+        detail.beneficiaryName = document.getString("beneficiary_name");
+        detail.beneficiaryNameCamel = document.getString("beneficiaryName");
+        detail.beneficiaryIdentification = document.getString("beneficiary_identification");
+        detail.beneficiaryId = document.getString("beneficiary_id");
+        detail.beneficiaryEmail = document.getString("beneficiary_email");
+        detail.beneficiaryEmailCamel = document.getString("beneficiaryEmail");
+        detail.destinationAccount = document.getString("destination_account");
+        detail.accountDestination = document.getString("accountDestination");
+        detail.amount = bigDecimalValue(document.get("amount"));
+        detail.status = document.getString("status");
+        detail.errorCode = document.getString("error_code");
+        detail.errorDescription = document.getString("error_description");
+        detail.errorMessage = document.getString("errorMessage");
+        detail.processedAt = instantValue(document.get("processed_at"));
+        detail.processedAtCamel = localDateTimeValue(document.get("processedAt"));
+        detail.companyName = document.getString("company_name");
+        detail.concept = document.getString("concept");
+        return detail;
+    }
+
+    private static Integer integerValue(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
+    private static BigDecimal bigDecimalValue(Object value) {
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        return value instanceof Number number ? BigDecimal.valueOf(number.doubleValue()) : null;
+    }
+
+    private static Instant instantValue(Object value) {
+        if (value instanceof Instant instant) {
+            return instant;
+        }
+        if (value instanceof Date date) {
+            return date.toInstant();
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime.toInstant(ZoneOffset.UTC);
+        }
+        return null;
+    }
+
+    private static LocalDateTime localDateTimeValue(Object value) {
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (value instanceof Date date) {
+            return LocalDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC);
+        }
+        if (value instanceof Instant instant) {
+            return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+        }
+        return null;
     }
 }
