@@ -17,6 +17,8 @@ management:
 banquito:
   reports:
     storage-path: ${REPORT_STORAGE_PATH:./reports}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3003,http://localhost:5173,http://localhost:8010}
   notification:
     grpc-host: ${NOTIFICATION_GRPC_HOST:localhost}
     grpc-port: ${NOTIFICATION_GRPC_PORT:9092}

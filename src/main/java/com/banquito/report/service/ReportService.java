@@ -214,7 +214,7 @@ public class ReportService {
 
     private boolean isSuccessful(PaymentDetail detail) {
         return detail.getStatus() != null
-                && List.of("SUCCESS", "SUCCESSFUL", "COMPLETED", "PROCESSED", "EXITOSO", "APROBADO")
+                && List.of("SUCCESS", "SUCCESSFUL", "COMPLETED", "PROCESSED", "EXITOSO", "EXITOSA", "APROBADO", "APROBADA")
                 .contains(detail.getStatus().toUpperCase());
     }
 

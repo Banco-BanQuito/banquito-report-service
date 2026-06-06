@@ -62,6 +62,12 @@ public class PaymentDetail {
     @Field("accountDestination")
     private String accountDestination;
 
+    @Field("destination_account_number")
+    private String destinationAccountNumber;
+
+    @Field("destinationAccountNumber")
+    private String destinationAccountNumberCamel;
+
     private BigDecimal amount;
     private String status;
 
@@ -117,7 +123,13 @@ public class PaymentDetail {
     }
 
     public String getDestinationAccount() {
-        return destinationAccount != null ? destinationAccount : accountDestination;
+        if (destinationAccount != null) {
+            return destinationAccount;
+        }
+        if (accountDestination != null) {
+            return accountDestination;
+        }
+        return destinationAccountNumber != null ? destinationAccountNumber : destinationAccountNumberCamel;
     }
 
     public BigDecimal getAmount() {
@@ -170,6 +182,8 @@ public class PaymentDetail {
         detail.beneficiaryEmailCamel = document.getString("beneficiaryEmail");
         detail.destinationAccount = document.getString("destination_account");
         detail.accountDestination = document.getString("accountDestination");
+        detail.destinationAccountNumber = document.getString("destination_account_number");
+        detail.destinationAccountNumberCamel = document.getString("destinationAccountNumber");
         detail.amount = bigDecimalValue(document.get("amount"));
         detail.status = document.getString("status");
         detail.errorCode = document.getString("error_code");
