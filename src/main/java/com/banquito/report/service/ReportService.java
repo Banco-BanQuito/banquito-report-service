@@ -8,8 +8,6 @@ import com.banquito.report.model.PaymentDetail;
 import com.banquito.report.model.PaymentReport;
 import com.banquito.report.model.ReceiptResponse;
 import com.banquito.report.repository.BeneficiaryNotificationRepository;
-import com.banquito.report.repository.PaymentBatchRepository;
-import com.banquito.report.repository.PaymentDetailRepository;
 import com.banquito.report.repository.PaymentReportRepository;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -23,6 +21,7 @@ import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,9 +35,9 @@ public class ReportService {
 
     private static final BigDecimal COMMISSION_PER_SUCCESS = new BigDecimal("0.60");
     private static final BigDecimal IVA_RATE = new BigDecimal("0.15");
+    private static final String STATUS_SENT = "ENVIADO";
+    private static final String STATUS_SIMULATED = "SIMULADO";
 
-    private final PaymentDetailRepository paymentDetailRepository;
-    private final PaymentBatchRepository paymentBatchRepository;
     private final PaymentReportRepository paymentReportRepository;
     private final BeneficiaryNotificationRepository notificationRepository;
     private final NotificationClient notificationClient;
@@ -46,16 +45,12 @@ public class ReportService {
     private final MongoTemplate mongoTemplate;
     private final Path storagePath;
 
-    public ReportService(PaymentDetailRepository paymentDetailRepository,
-                         PaymentBatchRepository paymentBatchRepository,
-                         PaymentReportRepository paymentReportRepository,
+    public ReportService(PaymentReportRepository paymentReportRepository,
                          BeneficiaryNotificationRepository notificationRepository,
                          NotificationClient notificationClient,
                          DetailStatusLogReader detailStatusLogReader,
                          MongoTemplate mongoTemplate,
                          @Value("${banquito.reports.storage-path}") String storagePath) {
-        this.paymentDetailRepository = paymentDetailRepository;
-        this.paymentBatchRepository = paymentBatchRepository;
         this.paymentReportRepository = paymentReportRepository;
         this.notificationRepository = notificationRepository;
         this.notificationClient = notificationClient;
@@ -102,7 +97,7 @@ public class ReportService {
         BigDecimal dispatched = details.stream()
                 .filter(this::isSuccessful)
                 .map(PaymentDetail::getAmount)
-                .filter(amount -> amount != null)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal commission = COMMISSION_PER_SUCCESS.multiply(BigDecimal.valueOf(successful)).setScale(2, RoundingMode.HALF_UP);
         BigDecimal iva = commission.multiply(IVA_RATE).setScale(2, RoundingMode.HALF_UP);
@@ -181,10 +176,10 @@ public class ReportService {
                 .filter(this::isSuccessful)
                 .forEach(detail -> {
                     boolean alreadySent = notificationRepository
-                            .findFirstByPaymentDetailIdAndStatus(detail.getId(), "ENVIADO")
+                            .findFirstByPaymentDetailIdAndStatus(detail.getId(), STATUS_SENT)
                             .isPresent()
                             || notificationRepository
-                            .findFirstByPaymentDetailIdAndStatus(routingNotificationId(detail), "ENVIADO")
+                            .findFirstByPaymentDetailIdAndStatus(routingNotificationId(detail), STATUS_SENT)
                             .isPresent();
                     if (alreadySent) {
                         return;
@@ -192,13 +187,13 @@ public class ReportService {
 
                     NotificationResponse response = notificationClient.sendPaymentNotification(detail);
                     Instant now = Instant.now();
-                    boolean sent = "ENVIADO".equals(response.getStatus()) || "SIMULADO".equals(response.getStatus());
+                    boolean sent = STATUS_SENT.equals(response.getStatus()) || STATUS_SIMULATED.equals(response.getStatus());
                     notificationRepository.save(new BeneficiaryNotification(
                             detail.getId(),
                             detail.getBeneficiaryEmail(),
                             "Pago recibido - BanQuito",
                             "BENEFICIARY_PAYMENT",
-                            sent ? "ENVIADO" : response.getStatus(),
+                            sent ? STATUS_SENT : response.getStatus(),
                             sent ? 0 : 1,
                             sent ? null : now.plusSeconds(300),
                             now,
@@ -209,7 +204,7 @@ public class ReportService {
     }
 
     private String routingNotificationId(PaymentDetail detail) {
-        return detail.getId() == null ? "" : String.valueOf(Math.abs(detail.getId().hashCode()));
+        return detail.getId() == null ? "" : String.valueOf(detail.getId().hashCode());
     }
 
     private boolean isSuccessful(PaymentDetail detail) {

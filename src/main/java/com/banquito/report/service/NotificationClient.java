@@ -31,7 +31,7 @@ public class NotificationClient {
 
         try {
             return stub.sendNotification(NotificationRequest.newBuilder()
-                    .setPaymentDetailId(detail.getId() == null ? 0 : Math.abs(detail.getId().hashCode()))
+                    .setPaymentDetailId(detail.getId() == null ? 0 : detail.getId().hashCode())
                     .setEmailTo(detail.getBeneficiaryEmail())
                     .setSubject("Pago recibido - BanQuito")
                     .setBodyTemplate("BENEFICIARY_PAYMENT")
