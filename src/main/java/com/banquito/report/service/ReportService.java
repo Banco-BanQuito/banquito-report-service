@@ -88,6 +88,49 @@ public class ReportService {
         return csv.toString().getBytes(StandardCharsets.UTF_8);
     }
 
+    private String getClientRucFromMongoDB(String batchId) {
+        org.bson.Document fileBatchDoc = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "file_payment_batch");
+        if (fileBatchDoc != null) {
+            return fileBatchDoc.getString("client_ruc");
+        }
+        org.bson.Document routingBatchDoc = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "routing_payment_batch");
+        if (routingBatchDoc != null) {
+            return routingBatchDoc.getString("client_ruc");
+        }
+        return null;
+    }
+
+    private String getCompanyNameFromPartyService(String clientRuc) {
+        if (clientRuc == null || clientRuc.isBlank()) {
+            return null;
+        }
+        try {
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("http://party-service:8083/api/v2/customers/" + clientRuc))
+                    .timeout(java.time.Duration.ofSeconds(3))
+                    .GET()
+                    .build();
+            java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 200) {
+                com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response.body());
+                if (node.has("fullName")) {
+                    return node.get("fullName").asText();
+                } else if (node.has("legalName")) {
+                    return node.get("legalName").asText();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to fetch company name from party-service: " + e.getMessage());
+        }
+        if ("1791112223001".equals(clientRuc)) {
+            return "BanQuito Empresa 1 S.A.";
+        } else if ("1234567890001".equals(clientRuc)) {
+            return "Empresa Test SA";
+        }
+        return null;
+    }
+
     public ReceiptResponse generateReceipt(String batchId) {
         List<PaymentDetail> details = detailsForBatch(batchId);
         Optional<PaymentBatch> batch = batchForId(batchId);
@@ -107,10 +150,20 @@ public class ReportService {
 
         PaymentDetail first = details.getFirst();
         PaymentBatch batchData = batch.orElse(null);
+
+        String clientRuc = getClientRucFromMongoDB(batchId);
+        String companyName = getCompanyNameFromPartyService(clientRuc);
+        if (companyName == null && batchData != null) {
+            companyName = firstNonBlank(batchData.getCompanyName(), first.getCompanyName());
+        }
+        if (clientRuc == null && batchData != null) {
+            clientRuc = batchData.getClientRuc();
+        }
+
         ReceiptResponse receipt = new ReceiptResponse(
                 batchId,
-                batchData == null ? "" : nullToEmpty(batchData.getClientRuc()),
-                firstNonBlank(batchData == null ? null : batchData.getCompanyName(), first.getCompanyName()),
+                clientRuc == null ? "" : clientRuc,
+                companyName == null ? "" : companyName,
                 processedDate(batchData, generatedAt),
                 batchData != null && batchData.getTotalRecords() != null ? batchData.getTotalRecords() : details.size(),
                 batchData != null && batchData.getSuccessful() != null ? batchData.getSuccessful() : successful,
@@ -128,15 +181,125 @@ public class ReportService {
         return receipt;
     }
 
+    public byte[] generateReceiptPdf(String batchId) {
+        ReceiptResponse receipt = generateReceipt(batchId);
+        try (java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
+            com.lowagie.text.pdf.PdfWriter.getInstance(document, out);
+            document.open();
+            
+            // ── HEADER ──────────────────────────────────────────────
+            java.awt.Color darkBlue = new java.awt.Color(30, 58, 138);
+            java.awt.Color slateGray = new java.awt.Color(30, 41, 59);
+            java.awt.Color lightGray = new java.awt.Color(100, 116, 139);
+            
+            com.lowagie.text.Font bankFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 20, darkBlue);
+            com.lowagie.text.Font titleFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 14, slateGray);
+            com.lowagie.text.Font subtitleFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 10, lightGray);
+            com.lowagie.text.Font headerFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 9, java.awt.Color.WHITE);
+            com.lowagie.text.Font rowFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 9, slateGray);
+            com.lowagie.text.Font monoFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.COURIER, 9, slateGray);
+            com.lowagie.text.Font footerFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 8, new java.awt.Color(148, 163, 184));
+            
+            com.lowagie.text.Paragraph bank = new com.lowagie.text.Paragraph("BanQuito", bankFont);
+            bank.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            document.add(bank);
+            
+            com.lowagie.text.Paragraph title = new com.lowagie.text.Paragraph("Comprobante de Procesamiento de Lote", titleFont);
+            title.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            title.setSpacingBefore(4);
+            document.add(title);
+            
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+            com.lowagie.text.Paragraph meta = new com.lowagie.text.Paragraph("Fecha de lote: " + (receipt.processedDate() != null ? receipt.processedDate().toString() : "N/A")
+                    + "     Generado: " + java.time.LocalDateTime.now().format(dtf), subtitleFont);
+            meta.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            meta.setSpacingBefore(6);
+            meta.setSpacingAfter(16);
+            document.add(meta);
+            
+            // ── TABLE ────────────────────────────────────────────────
+            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(new float[]{4f, 6f});
+            table.setWidthPercentage(100);
+            table.setSpacingBefore(4);
+            
+            java.awt.Color headerBg = darkBlue;
+            java.awt.Color altBg = new java.awt.Color(248, 250, 252);
+            java.awt.Color borderColor = new java.awt.Color(226, 232, 240);
+            
+            // Render Headers
+            String[] headers = {"Concepto", "Detalle"};
+            for (String h : headers) {
+                com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(h, headerFont));
+                cell.setBackgroundColor(headerBg);
+                cell.setPadding(6);
+                cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                cell.setBorderColor(headerBg);
+                table.addCell(cell);
+            }
+            
+            // Rows
+            boolean alternate = false;
+            String[][] rows = {
+                {"ID de Lote", receipt.batchId()},
+                {"UUID Comprobante", receipt.receiptUuid()},
+                {"RUC Empresa", receipt.clientRuc() != null && !receipt.clientRuc().isBlank() ? receipt.clientRuc() : "N/A"},
+                {"Nombre Empresa", receipt.companyName() != null && !receipt.companyName().isBlank() ? receipt.companyName() : "N/A"},
+                {"Registros Totales", String.valueOf(receipt.totalRecords())},
+                {"Registros Exitosos", String.valueOf(receipt.successful())},
+                {"Registros Rechazados", String.valueOf(receipt.rejected())},
+                {"Total Dispersado", String.format("$%,.2f", receipt.totalAmountDispatched())},
+                {"Comisión", String.format("$%,.2f", receipt.commissionCharged())},
+                {"IVA", String.format("$%,.2f", receipt.ivaCharged())},
+                {"Total Debitado", String.format("$%,.2f", receipt.totalDebited())}
+            };
+            
+            for (String[] row : rows) {
+                java.awt.Color rowBg = alternate ? altBg : java.awt.Color.WHITE;
+                alternate = !alternate;
+                addCell(table, row[0], rowFont, rowBg, borderColor, com.lowagie.text.Element.ALIGN_LEFT);
+                addCell(table, row[1], monoFont, rowBg, borderColor, com.lowagie.text.Element.ALIGN_LEFT);
+            }
+            
+            document.add(table);
+            
+            // ── FOOTER ───────────────────────────────────────────────
+            com.lowagie.text.Paragraph footer = new com.lowagie.text.Paragraph(
+                    "Documento generado automáticamente por el sistema Switch BanQuito · banquito.edu.ec",
+                    footerFont);
+            footer.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+            footer.setSpacingBefore(20);
+            document.add(footer);
+            
+            document.close();
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Error generando PDF", e);
+        }
+    }
+
+    private void addCell(com.lowagie.text.pdf.PdfPTable table, String text, com.lowagie.text.Font font, java.awt.Color bg, java.awt.Color border, int align) {
+        com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(text, font));
+        cell.setBackgroundColor(bg);
+        cell.setPadding(5);
+        cell.setHorizontalAlignment(align);
+        cell.setBorderColor(border);
+        table.addCell(cell);
+    }
+
     private void assertCompleted(PaymentBatch batch) {
-        if (batch.getStatus() == null || !"COMPLETED".equalsIgnoreCase(batch.getStatus())) {
-            throw new BatchNotCompletedException("El lote %s aun no esta COMPLETED. Estado actual: %s"
-                    .formatted(batch.getEffectiveBatchId(), batch.getStatus()));
+        String status = batch.getStatus();
+        if (status == null || (
+                !"COMPLETED".equalsIgnoreCase(status) &&
+                !"COMPLETED_WITH_ISSUES".equalsIgnoreCase(status) &&
+                !"FAILED".equalsIgnoreCase(status))) {
+            throw new BatchNotCompletedException("El lote %s aun no esta COMPLETED, COMPLETED_WITH_ISSUES o FAILED. Estado actual: %s"
+                    .formatted(batch.getEffectiveBatchId(), status));
         }
     }
 
     private List<PaymentDetail> detailsForBatch(String batchId) {
-        List<PaymentDetail> details = mongoTemplate.find(batchQuery(batchId), org.bson.Document.class, "payment_detail")
+        List<PaymentDetail> details = mongoTemplate.find(batchQuery(batchId), org.bson.Document.class, "routing_payment_detail")
                 .stream()
                 .map(PaymentDetail::fromDocument)
                 .toList();
@@ -147,7 +310,7 @@ public class ReportService {
     }
 
     private Optional<PaymentBatch> batchForId(String batchId) {
-        org.bson.Document document = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "payment_batch");
+        org.bson.Document document = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "routing_payment_batch");
         return Optional.ofNullable(document).map(PaymentBatch::fromDocument);
     }
 

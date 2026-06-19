@@ -10,7 +10,7 @@ import org.springframework.data.annotation.TypeAlias;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-@Document(collection = "payment_detail")
+@Document(collection = "routing_payment_detail")
 @TypeAlias("ec.edu.espe.banquito.routingservice.model.PaymentDetail")
 public class PaymentDetail {
 

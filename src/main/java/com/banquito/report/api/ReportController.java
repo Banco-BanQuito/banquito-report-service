@@ -39,6 +39,15 @@ public class ReportController {
         return reportService.generateReceipt(batchId);
     }
 
+    @GetMapping("/payments/receipts/{batchId}/pdf")
+    public ResponseEntity<byte[]> receiptPdf(@PathVariable String batchId) {
+        byte[] pdf = reportService.generateReceiptPdf(batchId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=comprobante_%s.pdf".formatted(batchId))
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
     @GetMapping("/reports/health")
     public Map<String, String> health() {
         return Map.of("status", "UP", "service", "report-service", "version", "2.0");

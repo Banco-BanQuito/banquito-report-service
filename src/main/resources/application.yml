@@ -3,7 +3,7 @@ spring:
     name: report-service
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/routingdb}
+      uri: ${MONGODB_URI:mongodb://localhost:27017/banquito}
 
 server:
   port: ${SERVER_PORT:8088}

@@ -9,7 +9,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-@Document(collection = "payment_batch")
+@Document(collection = "routing_payment_batch")
 public class PaymentBatch {
 
     @Id
