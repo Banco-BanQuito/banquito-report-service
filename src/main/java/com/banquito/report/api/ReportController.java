@@ -62,4 +62,12 @@ public class ReportController {
     public ResponseEntity<Map<String, String>> conflict(BatchNotCompletedException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", ex.getMessage()));
     }
+
+    // Cualquier otra falla (ej. error al persistir el reporte en disco) debe seguir
+    // devolviendo un mensaje legible en vez del 500 generico de Spring sin cuerpo util.
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> unexpected(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName()));
+    }
 }
