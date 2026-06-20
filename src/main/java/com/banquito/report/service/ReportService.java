@@ -1,6 +1,8 @@
 package com.banquito.report.service;
 
 import com.banquito.payswitch.notification.NotificationResponse;
+import com.banquito.report.exception.BatchNotCompletedException;
+import com.banquito.report.exception.ReportNotFoundException;
 import com.banquito.report.model.BeneficiaryNotification;
 import com.banquito.report.model.DetailStatusSnapshot;
 import com.banquito.report.model.PaymentBatch;
@@ -398,17 +400,5 @@ public class ReportService {
     private LocalDate processedDate(PaymentBatch batch, Instant generatedAt) {
         Instant instant = batch != null && batch.getProcessedAt() != null ? batch.getProcessedAt() : generatedAt;
         return instant.atZone(ZoneOffset.UTC).toLocalDate();
-    }
-
-    public static class ReportNotFoundException extends RuntimeException {
-        public ReportNotFoundException(String message) {
-            super(message);
-        }
-    }
-
-    public static class BatchNotCompletedException extends RuntimeException {
-        public BatchNotCompletedException(String message) {
-            super(message);
-        }
     }
 }
