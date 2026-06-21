@@ -192,8 +192,9 @@ public class ReportService {
 
     public byte[] generateReceiptPdf(String batchId) {
         ReceiptResponse receipt = generateReceipt(batchId);
-        try (java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
-            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
+        com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
+        try (java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+             AutoCloseable closer = () -> { if (document.isOpen()) document.close(); }) {
             com.lowagie.text.pdf.PdfWriter.getInstance(document, out);
             document.open();
             
@@ -279,10 +280,11 @@ public class ReportService {
             footer.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             footer.setSpacingBefore(20);
             document.add(footer);
-            
-            document.close();
+
             return out.toByteArray();
         } catch (IOException | com.lowagie.text.DocumentException ex) {
+            throw new ReportPdfGenerationException("Error generando PDF", ex);
+        } catch (Exception ex) {
             throw new ReportPdfGenerationException("Error generando PDF", ex);
         }
     }
