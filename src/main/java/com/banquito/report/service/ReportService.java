@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -35,8 +37,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class ReportService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final BigDecimal COMMISSION_PER_SUCCESS = new BigDecimal("0.60");
     private static final BigDecimal IVA_RATE = new BigDecimal("0.15");
+    private static final String CURRENCY_FORMAT = "$%,.2f";
     private static final String STATUS_SENT = "ENVIADO";
     private static final String STATUS_SIMULATED = "SIMULADO";
 
@@ -106,8 +110,7 @@ public class ReportService {
         if (clientRuc == null || clientRuc.isBlank()) {
             return null;
         }
-        try {
-            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+        try (java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient()) {
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
                     .uri(java.net.URI.create("http://party-service:8083/api/v2/customers/" + clientRuc))
                     .timeout(java.time.Duration.ofSeconds(3))
@@ -122,8 +125,11 @@ public class ReportService {
                     return node.get("legalName").asText();
                 }
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Failed to fetch company name from party-service: {}", e.getMessage());
         } catch (Exception e) {
-            System.err.println("Failed to fetch company name from party-service: " + e.getMessage());
+            log.warn("Failed to fetch company name from party-service: {}", e.getMessage());
         }
         if ("1791112223001".equals(clientRuc)) {
             return "BanQuito Empresa 1 S.A.";
@@ -214,7 +220,7 @@ public class ReportService {
             
             java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
             com.lowagie.text.Paragraph meta = new com.lowagie.text.Paragraph("Fecha de lote: " + (receipt.processedDate() != null ? receipt.processedDate().toString() : "N/A")
-                    + "     Generado: " + java.time.LocalDateTime.now().format(dtf), subtitleFont);
+                    + "     Generado: " + java.time.LocalDateTime.now(java.time.ZoneId.systemDefault()).format(dtf), subtitleFont);
             meta.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             meta.setSpacingBefore(6);
             meta.setSpacingAfter(16);
@@ -250,10 +256,10 @@ public class ReportService {
                 {"Registros Totales", String.valueOf(receipt.totalRecords())},
                 {"Registros Exitosos", String.valueOf(receipt.successful())},
                 {"Registros Rechazados", String.valueOf(receipt.rejected())},
-                {"Total Dispersado", String.format("$%,.2f", receipt.totalAmountDispatched())},
-                {"Comisión", String.format("$%,.2f", receipt.commissionCharged())},
-                {"IVA", String.format("$%,.2f", receipt.ivaCharged())},
-                {"Total Debitado", String.format("$%,.2f", receipt.totalDebited())}
+                {"Total Dispersado", String.format(CURRENCY_FORMAT, receipt.totalAmountDispatched())},
+                {"Comisión", String.format(CURRENCY_FORMAT, receipt.commissionCharged())},
+                {"IVA", String.format(CURRENCY_FORMAT, receipt.ivaCharged())},
+                {"Total Debitado", String.format(CURRENCY_FORMAT, receipt.totalDebited())}
             };
             
             for (String[] row : rows) {
@@ -276,7 +282,7 @@ public class ReportService {
             document.close();
             return out.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("Error generando PDF", e);
+            throw new com.banquito.report.exception.ReportGenerationException("Error generando PDF", e);
         }
     }
 
@@ -353,18 +359,17 @@ public class ReportService {
                     NotificationResponse response = notificationClient.sendPaymentNotification(detail);
                     Instant now = Instant.now();
                     boolean sent = STATUS_SENT.equals(response.getStatus()) || STATUS_SIMULATED.equals(response.getStatus());
-                    notificationRepository.save(new BeneficiaryNotification(
-                            detail.getId(),
-                            detail.getBeneficiaryEmail(),
-                            "Pago recibido - BanQuito",
-                            "BENEFICIARY_PAYMENT",
-                            sent ? STATUS_SENT : response.getStatus(),
-                            sent ? 0 : 1,
-                            sent ? null : now.plusSeconds(300),
-                            now,
-                            sent ? now : null,
-                            null
-                    ));
+                    notificationRepository.save(BeneficiaryNotification.builder()
+                            .paymentDetailId(detail.getId())
+                            .emailTo(detail.getBeneficiaryEmail())
+                            .subject("Pago recibido - BanQuito")
+                            .messageBody("BENEFICIARY_PAYMENT")
+                            .status(sent ? STATUS_SENT : response.getStatus())
+                            .retryCount(sent ? 0 : 1)
+                            .nextRetryAt(sent ? null : now.plusSeconds(300))
+                            .createdAt(now)
+                            .sentAt(sent ? now : null)
+                            .build());
                 });
     }
 
