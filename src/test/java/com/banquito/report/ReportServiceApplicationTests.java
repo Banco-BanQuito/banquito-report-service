@@ -11,5 +11,6 @@ class ReportServiceApplicationTests {
 
     @Test
     void contextLoads() {
+        // Intencional: solo verifica que el contexto de Spring se levante sin errores.
     }
 }
