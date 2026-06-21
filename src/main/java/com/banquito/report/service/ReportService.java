@@ -221,7 +221,7 @@ public class ReportService {
             
             java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
             com.lowagie.text.Paragraph meta = new com.lowagie.text.Paragraph("Fecha de lote: " + (receipt.processedDate() != null ? receipt.processedDate().toString() : "N/A")
-                    + "     Generado: " + java.time.LocalDateTime.now(java.time.ZoneId.systemDefault()).format(dtf), subtitleFont);
+                    + "     Generado: " + java.time.LocalDateTime.now(java.time.ZoneId.of("America/Guayaquil")).format(dtf), subtitleFont);
             meta.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             meta.setSpacingBefore(6);
             meta.setSpacingAfter(16);
