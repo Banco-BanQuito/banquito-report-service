@@ -2,6 +2,7 @@ package com.banquito.report.service;
 
 import com.banquito.payswitch.notification.NotificationResponse;
 import com.banquito.report.exception.BatchNotCompletedException;
+import com.banquito.report.exception.ReportPdfGenerationException;
 import com.banquito.report.exception.ReportNotFoundException;
 import com.banquito.report.model.BeneficiaryNotification;
 import com.banquito.report.model.DetailStatusSnapshot;
@@ -19,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
@@ -26,6 +28,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -35,8 +39,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class ReportService {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ReportService.class);
     private static final BigDecimal COMMISSION_PER_SUCCESS = new BigDecimal("0.60");
     private static final BigDecimal IVA_RATE = new BigDecimal("0.15");
+    private static final String MONEY_FORMAT = "$%,.2f";
     private static final String STATUS_SENT = "ENVIADO";
     private static final String STATUS_SIMULATED = "SIMULADO";
 
@@ -122,13 +128,11 @@ public class ReportService {
                     return node.get("legalName").asText();
                 }
             }
-        } catch (Exception e) {
-            System.err.println("Failed to fetch company name from party-service: " + e.getMessage());
-        }
-        if ("1791112223001".equals(clientRuc)) {
-            return "BanQuito Empresa 1 S.A.";
-        } else if ("1234567890001".equals(clientRuc)) {
-            return "Empresa Test SA";
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            LOG.warn("Interrupted while fetching company name from party-service", ex);
+        } catch (IOException | RuntimeException ex) {
+            LOG.warn("Failed to fetch company name from party-service: {}", ex.getMessage());
         }
         return null;
     }
@@ -214,7 +218,7 @@ public class ReportService {
             
             java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
             com.lowagie.text.Paragraph meta = new com.lowagie.text.Paragraph("Fecha de lote: " + (receipt.processedDate() != null ? receipt.processedDate().toString() : "N/A")
-                    + "     Generado: " + java.time.LocalDateTime.now().format(dtf), subtitleFont);
+                    + "     Generado: " + LocalDateTime.now(ZoneOffset.UTC).format(dtf), subtitleFont);
             meta.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             meta.setSpacingBefore(6);
             meta.setSpacingAfter(16);
@@ -250,10 +254,10 @@ public class ReportService {
                 {"Registros Totales", String.valueOf(receipt.totalRecords())},
                 {"Registros Exitosos", String.valueOf(receipt.successful())},
                 {"Registros Rechazados", String.valueOf(receipt.rejected())},
-                {"Total Dispersado", String.format("$%,.2f", receipt.totalAmountDispatched())},
-                {"Comisión", String.format("$%,.2f", receipt.commissionCharged())},
-                {"IVA", String.format("$%,.2f", receipt.ivaCharged())},
-                {"Total Debitado", String.format("$%,.2f", receipt.totalDebited())}
+                {"Total Dispersado", String.format(MONEY_FORMAT, receipt.totalAmountDispatched())},
+                {"Comisión", String.format(MONEY_FORMAT, receipt.commissionCharged())},
+                {"IVA", String.format(MONEY_FORMAT, receipt.ivaCharged())},
+                {"Total Debitado", String.format(MONEY_FORMAT, receipt.totalDebited())}
             };
             
             for (String[] row : rows) {
@@ -275,8 +279,8 @@ public class ReportService {
             
             document.close();
             return out.toByteArray();
-        } catch (Exception e) {
-            throw new RuntimeException("Error generando PDF", e);
+        } catch (IOException | com.lowagie.text.DocumentException ex) {
+            throw new ReportPdfGenerationException("Error generando PDF", ex);
         }
     }
 
@@ -352,13 +356,14 @@ public class ReportService {
 
                     NotificationResponse response = notificationClient.sendPaymentNotification(detail);
                     Instant now = Instant.now();
-                    boolean sent = STATUS_SENT.equals(response.getStatus()) || STATUS_SIMULATED.equals(response.getStatus());
+                    String responseStatus = response.getStatus();
+                    boolean sent = STATUS_SENT.equals(responseStatus) || STATUS_SIMULATED.equals(responseStatus);
                     notificationRepository.save(new BeneficiaryNotification(
                             detail.getId(),
                             detail.getBeneficiaryEmail(),
                             "Pago recibido - BanQuito",
                             "BENEFICIARY_PAYMENT",
-                            sent ? STATUS_SENT : response.getStatus(),
+                            sent ? STATUS_SENT : responseStatus,
                             sent ? 0 : 1,
                             sent ? null : now.plusSeconds(300),
                             now,
@@ -369,7 +374,8 @@ public class ReportService {
     }
 
     private String routingNotificationId(PaymentDetail detail) {
-        return detail.getId() == null ? "" : String.valueOf(detail.getId().hashCode());
+        String detailId = detail.getId();
+        return detailId == null || detailId.isBlank() ? "" : String.valueOf(Math.floorMod(detailId.hashCode(), Integer.MAX_VALUE));
     }
 
     private boolean isSuccessful(PaymentDetail detail) {

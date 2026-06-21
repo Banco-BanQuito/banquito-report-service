@@ -31,7 +31,7 @@ public class NotificationClient {
 
         try {
             return stub.sendNotification(NotificationRequest.newBuilder()
-                    .setPaymentDetailId(detail.getId() == null ? 0 : detail.getId().hashCode())
+                    .setPaymentDetailId(stablePositiveId(detail.getId()))
                     .setEmailTo(detail.getBeneficiaryEmail())
                     .setSubject("Pago recibido - BanQuito")
                     .setBodyTemplate("BENEFICIARY_PAYMENT")
@@ -52,5 +52,9 @@ public class NotificationClient {
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private int stablePositiveId(String value) {
+        return value == null || value.isBlank() ? 0 : Math.floorMod(value.hashCode(), Integer.MAX_VALUE);
     }
 }

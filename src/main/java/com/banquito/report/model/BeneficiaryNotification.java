@@ -58,4 +58,8 @@ public class BeneficiaryNotification {
     public String getStatus() {
         return status;
     }
+
+    public String getSubject() {
+        return subject;
+    }
 }
