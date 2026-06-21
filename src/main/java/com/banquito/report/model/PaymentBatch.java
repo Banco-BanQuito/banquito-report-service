@@ -4,13 +4,14 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Date; // NOSONAR - necesario para deserializar documentos Mongo legados guardados con java.util.Date
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "routing_payment_batch")
 public class PaymentBatch {
+
+    private static final String LEGACY_DATE_CLASS = "java.util.Date";
 
     @Id
     private String id;
@@ -160,8 +161,9 @@ public class PaymentBatch {
         if (value instanceof Instant instant) {
             return instant;
         }
-        if (value instanceof Date date) {
-            return date.toInstant();
+        Instant legacyDate = legacyDateInstant(value);
+        if (legacyDate != null) {
+            return legacyDate;
         }
         if (value instanceof LocalDateTime localDateTime) {
             return localDateTime.toInstant(ZoneOffset.UTC);
@@ -173,12 +175,25 @@ public class PaymentBatch {
         if (value instanceof LocalDateTime localDateTime) {
             return localDateTime;
         }
-        if (value instanceof Date date) {
-            return LocalDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC);
+        Instant legacyDate = legacyDateInstant(value);
+        if (legacyDate != null) {
+            return LocalDateTime.ofInstant(legacyDate, ZoneOffset.UTC);
         }
         if (value instanceof Instant instant) {
             return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
         }
         return null;
+    }
+
+    private static Instant legacyDateInstant(Object value) {
+        if (value == null || !LEGACY_DATE_CLASS.equals(value.getClass().getName())) {
+            return null;
+        }
+        try {
+            Object epochMillis = value.getClass().getMethod("getTime").invoke(value);
+            return epochMillis instanceof Long millis ? Instant.ofEpochMilli(millis) : null;
+        } catch (ReflectiveOperationException ex) {
+            return null;
+        }
     }
 }

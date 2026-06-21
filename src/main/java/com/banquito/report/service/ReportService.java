@@ -2,6 +2,7 @@ package com.banquito.report.service;
 
 import com.banquito.payswitch.notification.NotificationResponse;
 import com.banquito.report.exception.BatchNotCompletedException;
+import com.banquito.report.exception.ReportPdfGenerationException;
 import com.banquito.report.exception.ReportNotFoundException;
 import com.banquito.report.model.BeneficiaryNotification;
 import com.banquito.report.model.DetailStatusSnapshot;
@@ -19,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
@@ -281,8 +283,8 @@ public class ReportService {
             
             document.close();
             return out.toByteArray();
-        } catch (Exception e) {
-            throw new com.banquito.report.exception.ReportGenerationException("Error generando PDF", e);
+        } catch (IOException | com.lowagie.text.DocumentException ex) {
+            throw new ReportPdfGenerationException("Error generando PDF", ex);
         }
     }
 
@@ -358,13 +360,14 @@ public class ReportService {
 
                     NotificationResponse response = notificationClient.sendPaymentNotification(detail);
                     Instant now = Instant.now();
-                    boolean sent = STATUS_SENT.equals(response.getStatus()) || STATUS_SIMULATED.equals(response.getStatus());
+                    String responseStatus = response.getStatus();
+                    boolean sent = STATUS_SENT.equals(responseStatus) || STATUS_SIMULATED.equals(responseStatus);
                     notificationRepository.save(BeneficiaryNotification.builder()
                             .paymentDetailId(detail.getId())
                             .emailTo(detail.getBeneficiaryEmail())
                             .subject("Pago recibido - BanQuito")
                             .messageBody("BENEFICIARY_PAYMENT")
-                            .status(sent ? STATUS_SENT : response.getStatus())
+                            .status(sent ? STATUS_SENT : responseStatus)
                             .retryCount(sent ? 0 : 1)
                             .nextRetryAt(sent ? null : now.plusSeconds(300))
                             .createdAt(now)
@@ -374,7 +377,8 @@ public class ReportService {
     }
 
     private String routingNotificationId(PaymentDetail detail) {
-        return detail.getId() == null ? "" : String.valueOf(detail.getId().hashCode());
+        String detailId = detail.getId();
+        return detailId == null || detailId.isBlank() ? "" : String.valueOf(Math.floorMod(detailId.hashCode(), Integer.MAX_VALUE));
     }
 
     private boolean isSuccessful(PaymentDetail detail) {
