@@ -11,5 +11,6 @@ class ReportServiceApplicationTests {
 
     @Test
     void contextLoads() {
+        // Spring Boot levanta el contexto con gRPC desactivado para validar la configuracion base.
     }
 }
