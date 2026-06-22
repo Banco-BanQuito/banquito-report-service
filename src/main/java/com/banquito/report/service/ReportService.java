@@ -281,6 +281,7 @@ public class ReportService {
             footer.setSpacingBefore(20);
             document.add(footer);
 
+            document.close();
             return out.toByteArray();
         } catch (IOException | com.lowagie.text.DocumentException ex) {
             throw new ReportPdfGenerationException("Error generando PDF", ex);
