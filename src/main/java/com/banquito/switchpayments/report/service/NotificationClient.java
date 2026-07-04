@@ -1,9 +1,9 @@
-package com.banquito.report.service;
+package com.banquito.switchpayments.report.service;
 
 import com.banquito.payswitch.notification.NotificationRequest;
 import com.banquito.payswitch.notification.NotificationResponse;
 import com.banquito.payswitch.notification.NotificationServiceGrpc;
-import com.banquito.report.model.PaymentDetail;
+import com.banquito.switchpayments.report.model.PaymentDetail;
 import io.grpc.StatusRuntimeException;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;

@@ -1,6 +1,6 @@
-package com.banquito.report.repository;
+package com.banquito.switchpayments.report.repository;
 
-import com.banquito.report.model.PaymentDetail;
+import com.banquito.switchpayments.report.model.PaymentDetail;
 import java.util.List;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;

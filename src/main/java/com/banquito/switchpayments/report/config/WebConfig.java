@@ -1,4 +1,4 @@
-package com.banquito.report.config;
+package com.banquito.switchpayments.report.config;
 
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;

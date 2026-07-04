@@ -1,6 +1,6 @@
-package com.banquito.report.service;
+package com.banquito.switchpayments.report.service;
 
-import com.banquito.report.model.DetailStatusSnapshot;
+import com.banquito.switchpayments.report.model.DetailStatusSnapshot;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.HashMap;

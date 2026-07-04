@@ -1,17 +1,17 @@
-package com.banquito.report.service;
+package com.banquito.switchpayments.report.service;
 
 import com.banquito.payswitch.notification.NotificationResponse;
-import com.banquito.report.exception.BatchNotCompletedException;
-import com.banquito.report.exception.ReportPdfGenerationException;
-import com.banquito.report.exception.ReportNotFoundException;
-import com.banquito.report.model.BeneficiaryNotification;
-import com.banquito.report.model.DetailStatusSnapshot;
-import com.banquito.report.model.PaymentBatch;
-import com.banquito.report.model.PaymentDetail;
-import com.banquito.report.model.PaymentReport;
-import com.banquito.report.model.ReceiptResponse;
-import com.banquito.report.repository.BeneficiaryNotificationRepository;
-import com.banquito.report.repository.PaymentReportRepository;
+import com.banquito.switchpayments.report.exception.BatchNotCompletedException;
+import com.banquito.switchpayments.report.exception.ReportPdfGenerationException;
+import com.banquito.switchpayments.report.exception.ReportNotFoundException;
+import com.banquito.switchpayments.report.model.BeneficiaryNotification;
+import com.banquito.switchpayments.report.model.DetailStatusSnapshot;
+import com.banquito.switchpayments.report.model.PaymentBatch;
+import com.banquito.switchpayments.report.model.PaymentDetail;
+import com.banquito.switchpayments.report.model.PaymentReport;
+import com.banquito.switchpayments.report.model.ReceiptResponse;
+import com.banquito.switchpayments.report.repository.BeneficiaryNotificationRepository;
+import com.banquito.switchpayments.report.repository.PaymentReportRepository;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -197,12 +197,11 @@ public class ReportService {
              AutoCloseable closer = () -> { if (document.isOpen()) document.close(); }) {
             com.lowagie.text.pdf.PdfWriter.getInstance(document, out);
             document.open();
-            
-            // ── HEADER ──────────────────────────────────────────────
+
             java.awt.Color darkBlue = new java.awt.Color(30, 58, 138);
             java.awt.Color slateGray = new java.awt.Color(30, 41, 59);
             java.awt.Color lightGray = new java.awt.Color(100, 116, 139);
-            
+
             com.lowagie.text.Font bankFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 20, darkBlue);
             com.lowagie.text.Font titleFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 14, slateGray);
             com.lowagie.text.Font subtitleFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 10, lightGray);
@@ -210,16 +209,16 @@ public class ReportService {
             com.lowagie.text.Font rowFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 9, slateGray);
             com.lowagie.text.Font monoFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.COURIER, 9, slateGray);
             com.lowagie.text.Font footerFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 8, new java.awt.Color(148, 163, 184));
-            
+
             com.lowagie.text.Paragraph bank = new com.lowagie.text.Paragraph("BanQuito", bankFont);
             bank.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             document.add(bank);
-            
+
             com.lowagie.text.Paragraph title = new com.lowagie.text.Paragraph("Comprobante de Procesamiento de Lote", titleFont);
             title.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
             title.setSpacingBefore(4);
             document.add(title);
-            
+
             java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
             com.lowagie.text.Paragraph meta = new com.lowagie.text.Paragraph("Fecha de lote: " + (receipt.processedDate() != null ? receipt.processedDate().toString() : "N/A")
                     + "     Generado: " + java.time.LocalDateTime.now(java.time.ZoneId.of("America/Guayaquil")).format(dtf), subtitleFont);
@@ -227,17 +226,15 @@ public class ReportService {
             meta.setSpacingBefore(6);
             meta.setSpacingAfter(16);
             document.add(meta);
-            
-            // ── TABLE ────────────────────────────────────────────────
+
             com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(new float[]{4f, 6f});
             table.setWidthPercentage(100);
             table.setSpacingBefore(4);
-            
+
             java.awt.Color headerBg = darkBlue;
             java.awt.Color altBg = new java.awt.Color(248, 250, 252);
             java.awt.Color borderColor = new java.awt.Color(226, 232, 240);
-            
-            // Render Headers
+
             String[] headers = {"Concepto", "Detalle"};
             for (String h : headers) {
                 com.lowagie.text.pdf.PdfPCell cell = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(h, headerFont));
@@ -247,8 +244,7 @@ public class ReportService {
                 cell.setBorderColor(headerBg);
                 table.addCell(cell);
             }
-            
-            // Rows
+
             boolean alternate = false;
             String[][] rows = {
                 {"ID de Lote", receipt.batchId()},
@@ -263,17 +259,16 @@ public class ReportService {
                 {"IVA", String.format(CURRENCY_FORMAT, receipt.ivaCharged())},
                 {"Total Debitado", String.format(CURRENCY_FORMAT, receipt.totalDebited())}
             };
-            
+
             for (String[] row : rows) {
                 java.awt.Color rowBg = alternate ? altBg : java.awt.Color.WHITE;
                 alternate = !alternate;
                 addCell(table, row[0], rowFont, rowBg, borderColor, com.lowagie.text.Element.ALIGN_LEFT);
                 addCell(table, row[1], monoFont, rowBg, borderColor, com.lowagie.text.Element.ALIGN_LEFT);
             }
-            
+
             document.add(table);
-            
-            // ── FOOTER ───────────────────────────────────────────────
+
             com.lowagie.text.Paragraph footer = new com.lowagie.text.Paragraph(
                     "Documento generado automáticamente por el sistema Switch BanQuito · banquito.edu.ec",
                     footerFont);

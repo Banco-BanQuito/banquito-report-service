@@ -1,4 +1,4 @@
-package com.banquito.report.model;
+package com.banquito.switchpayments.report.model;
 
 import java.time.Instant;
 
