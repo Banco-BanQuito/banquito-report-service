@@ -1,4 +1,4 @@
-package com.banquito.report.config;
+package com.banquito.switchpayments.report.config;
 
 import com.banquito.payswitch.notification.NotificationServiceGrpc;
 import io.grpc.ManagedChannel;

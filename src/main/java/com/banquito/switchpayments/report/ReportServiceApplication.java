@@ -1,4 +1,4 @@
-package com.banquito.report;
+package com.banquito.switchpayments.report;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -1,7 +1,7 @@
-package com.banquito.report.api;
+package com.banquito.switchpayments.report.api;
 
-import com.banquito.report.model.ReceiptResponse;
-import com.banquito.report.service.ReportService;
+import com.banquito.switchpayments.report.model.ReceiptResponse;
+import com.banquito.switchpayments.report.service.ReportService;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;

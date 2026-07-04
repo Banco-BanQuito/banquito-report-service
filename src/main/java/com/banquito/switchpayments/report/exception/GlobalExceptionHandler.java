@@ -1,4 +1,4 @@
-package com.banquito.report.exception;
+package com.banquito.switchpayments.report.exception;
 
 import java.util.Map;
 import org.springframework.http.HttpStatus;
