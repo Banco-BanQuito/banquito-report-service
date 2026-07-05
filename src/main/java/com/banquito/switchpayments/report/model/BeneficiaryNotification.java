@@ -39,6 +39,9 @@ public class BeneficiaryNotification {
     @Field("error_message")
     private String errorMessage;
 
+    private BeneficiaryNotification() {
+    }
+
     private BeneficiaryNotification(Builder builder) {
         this.paymentDetailId = builder.paymentDetailId;
         this.emailTo = builder.emailTo;
