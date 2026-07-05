@@ -306,10 +306,16 @@ public class ReportService {
     }
 
     private List<PaymentDetail> detailsForBatch(String batchId) {
-        List<PaymentDetail> details = mongoTemplate.find(batchQuery(batchId), org.bson.Document.class, "routing_payment_detail")
+        List<PaymentDetail> details = mongoTemplate.find(batchQuery(batchId), org.bson.Document.class, "payment_dispatch_detail")
                 .stream()
                 .map(PaymentDetail::fromDocument)
                 .toList();
+        if (details.isEmpty()) {
+            details = mongoTemplate.find(batchQuery(batchId), org.bson.Document.class, "routing_payment_detail")
+                    .stream()
+                    .map(PaymentDetail::fromDocument)
+                    .toList();
+        }
         if (details.isEmpty()) {
             throw new ReportNotFoundException("No existen detalles procesados para el lote " + batchId);
         }
@@ -317,7 +323,10 @@ public class ReportService {
     }
 
     private Optional<PaymentBatch> batchForId(String batchId) {
-        org.bson.Document document = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "routing_payment_batch");
+        org.bson.Document document = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "payment_dispatch_batch");
+        if (document == null) {
+            document = mongoTemplate.findOne(batchQuery(batchId), org.bson.Document.class, "routing_payment_batch");
+        }
         return Optional.ofNullable(document).map(PaymentBatch::fromDocument);
     }
 
