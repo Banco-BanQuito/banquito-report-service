@@ -23,6 +23,15 @@ public class ReportController {
 
     @GetMapping("/payments/batches/{batchId}/report")
     public ResponseEntity<byte[]> newsReport(@PathVariable String batchId) {
+        return buildNewsReportResponse(batchId);
+    }
+
+    @GetMapping("/reports/payments/batches/{batchId}/report")
+    public ResponseEntity<byte[]> newsReportFromReportsRoute(@PathVariable String batchId) {
+        return buildNewsReportResponse(batchId);
+    }
+
+    private ResponseEntity<byte[]> buildNewsReportResponse(String batchId) {
         byte[] csv = reportService.generateNewsReportCsv(batchId);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=novedades_%s.csv".formatted(batchId))
