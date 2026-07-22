@@ -3,7 +3,7 @@ spring:
     name: report-service
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/banquito}
+      uri: ${MONGODB_URI}
 
 server:
   port: ${SERVER_PORT:8088}
@@ -21,8 +21,8 @@ banquito:
   reports:
     storage-path: ${REPORT_STORAGE_PATH:./reports}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3003,http://localhost:5173,http://localhost:8010}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
   notification:
-    grpc-host: ${NOTIFICATION_GRPC_HOST:localhost}
+    grpc-host: ${NOTIFICATION_GRPC_HOST}
     grpc-port: ${NOTIFICATION_GRPC_PORT:9092}
     grpc-enabled: ${NOTIFICATION_GRPC_ENABLED:true}
