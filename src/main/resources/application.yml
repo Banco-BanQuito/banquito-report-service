@@ -26,3 +26,6 @@ banquito:
     grpc-host: ${NOTIFICATION_GRPC_HOST}
     grpc-port: ${NOTIFICATION_GRPC_PORT:9092}
     grpc-enabled: ${NOTIFICATION_GRPC_ENABLED:true}
+logging:
+  level:
+    com.banquito.switchpayments.report: DEBUG
